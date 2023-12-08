@@ -39,8 +39,7 @@ from modules.memory_module import TGNMemory
 from modules.early_stopping import  EarlyStopMonitor
 from tgb.linkproppred.dataset_pyg import PyGLinkPropPredDataset
 
-from NCNDecoder.NCNPred import NCNPredictor
-# from modules.NCNDecoder.NCNPred import NCNPredictor
+from modules.NCNDecoder.NCNPred import NCNPredictor
 
 
 # ==========
