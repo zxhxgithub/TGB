@@ -4,7 +4,7 @@ Reference:
     - https://github.com/pyg-team/pytorch_geometric/blob/master/examples/tgn.py
 
 command for an example run:
-    python examples/linkproppred/tgbl-wiki/tgn.py --data "tgbl-wiki" --num_run 1 --seed 1
+    python examples/linkproppred/tgbl-coin/tgn.py --data "tgbl-coin" --num_run 1 --seed 1
 """
 
 import math
@@ -19,10 +19,13 @@ import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
 from torch.nn import Linear
 
+from torch_sparse import SparseTensor
+
 from torch_geometric.datasets import JODIEDataset
 from torch_geometric.loader import TemporalDataLoader
 
 from torch_geometric.nn import TransformerConv
+from loguru import logger
 
 # internal imports
 from tgb.utils.utils import get_args, set_random_seed, save_results
@@ -35,6 +38,9 @@ from modules.neighbor_loader import LastNeighborLoader
 from modules.memory_module import TGNMemory
 from modules.early_stopping import  EarlyStopMonitor
 from tgb.linkproppred.dataset_pyg import PyGLinkPropPredDataset
+
+from NCNDecoder.NCNPred import NCNPredictor
+# from modules.NCNDecoder.NCNPred import NCNPredictor
 
 
 # ==========
@@ -61,6 +67,7 @@ def train():
     neighbor_loader.reset_state()  # Start with an empty graph.
 
     total_loss = 0
+
     for batch in train_loader:
         batch = batch.to(device)
         optimizer.zero_grad()
@@ -77,11 +84,17 @@ def train():
         )
 
         n_id = torch.cat([src, pos_dst, neg_dst]).unique()
+        #print("pre_id", n_id)
         n_id, edge_index, e_id = neighbor_loader(n_id)
         assoc[n_id] = torch.arange(n_id.size(0), device=device)
 
+        id_num = n_id.size(0)
+        #print("id_n", id_num)
+        #print("assoc", assoc[n_id])
+
         # Get updated memory of all nodes involved in the computation.
         z, last_update = model['memory'](n_id)
+
         z = model['gnn'](
             z,
             last_update,
@@ -89,9 +102,34 @@ def train():
             data.t[e_id].to(device),
             data.msg[e_id].to(device),
         )
-        pos_out = model['link_pred'](z[assoc[src]], z[assoc[pos_dst]])
-        neg_out = model['link_pred'](z[assoc[src]], z[assoc[neg_dst]])
+        
+        ### 230913 #####################################################
+        
+        src_re = assoc[src]
+        pos_re = assoc[pos_dst]
+        neg_re = assoc[neg_dst]
+        #print(id_num)
+        #print(edge_index)
+        #input()
+        #assert 0==1
+        loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+        loop_edge = torch.stack([loop_edge,loop_edge])
+        if edge_index.size(1)==0:
+            #print(0)
+            #print(edge_index)
+            #print(loop_edge)
+            adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
+            #input()
+        else:
+            #print(1)
+            #print(edge_index)
+            #print(torch.cat((loop_edge,edge_index),dim=-1))
+            #import time
+            #time.sleep(2)
+            adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index),dim=-1)).to_device(device)
 
+        pos_out = model['link_pred'](z, adj, torch.stack([src_re,pos_re]), 1)
+        neg_out = model['link_pred'](z, adj, torch.stack([src_re,neg_re]), 1)
         loss = criterion(pos_out, torch.ones_like(pos_out))
         loss += criterion(neg_out, torch.zeros_like(neg_out))
 
@@ -133,7 +171,8 @@ def test(loader, neg_sampler, split_mode):
             pos_batch.t,
             pos_batch.msg,
         )
-
+        
+        ########230915###########
         neg_batch_list = neg_sampler.query_batch(pos_src, pos_dst, pos_t, split_mode=split_mode)
 
         for idx, neg_batch in enumerate(neg_batch_list):
@@ -149,7 +188,8 @@ def test(loader, neg_sampler, split_mode):
             n_id = torch.cat([src, dst]).unique()
             n_id, edge_index, e_id = neighbor_loader(n_id)
             assoc[n_id] = torch.arange(n_id.size(0), device=device)
-
+            
+            id_num = n_id.size(0)
             # Get updated memory of all nodes involved in the computation.
             z, last_update = model['memory'](n_id)
             z = model['gnn'](
@@ -159,8 +199,21 @@ def test(loader, neg_sampler, split_mode):
                 data.t[e_id].to(device),
                 data.msg[e_id].to(device),
             )
+           
+            if edge_index.size(0):
+                loop_edge = torch.arange(id_num, dtype=torch.int64)
+                #print(loop_edge)
+                adj = SparseTensor.from_edge_index(torch.stack([loop_edge,loop_edge])).to_device(device)
+                #input()
+            else:
+                adj = SparseTensor.from_edge_index(edge_index).to_device(device)
 
-            y_pred = model['link_pred'](z[assoc[src]], z[assoc[dst]])
+            y_pred = model['link_pred'](z, adj, torch.stack([assoc[src], assoc[dst]]), 1)
+            #y_pred = model['link_pred'](z[assoc[src]], z[assoc[dst]])
+            
+            #print(y_pred)
+            #print(y_pred.size())
+            #assert 0==1
 
             # compute MRR
             input_dict = {
@@ -191,6 +244,7 @@ args, _ = get_args()
 print("INFO: Arguments:", args)
 
 DATA = "tgbl-wiki"
+#DATA = "tgbl-coin"
 LR = args.lr
 BATCH_SIZE = args.bs
 K_VALUE = args.k_value  
@@ -205,7 +259,7 @@ NUM_RUNS = args.num_run
 NUM_NEIGHBORS = 10
 
 
-MODEL_NAME = 'TGN'
+MODEL_NAME = 'TGN_NCN'
 # ==========
 
 # set the device
@@ -251,8 +305,10 @@ gnn = GraphAttentionEmbedding(
     time_enc=memory.time_enc,
 ).to(device)
 
-link_pred = LinkPredictor(in_channels=EMB_DIM).to(device)
-#link_pred = torch.compile(link_pred)
+link_pred = NCNPredictor(in_channels=EMB_DIM, hidden_channels=EMB_DIM, out_channels=1,
+                         num_layers=1).to(device)
+# link_pred = LinkPredictor(in_channels=EMB_DIM).to(device)
+
 model = {'memory': memory,
          'gnn': gnn,
          'link_pred': link_pred}
@@ -266,10 +322,12 @@ criterion = torch.nn.BCEWithLogitsLoss()
 # Helper vector to map global node indices to local ones.
 assoc = torch.empty(data.num_nodes, dtype=torch.long, device=device)
 
+#logger.add("logger.log")
 
 print("==========================================================")
 print(f"=================*** {MODEL_NAME}: LinkPropPred: {DATA} ***=============")
 print("==========================================================")
+#logger.info("test")
 
 evaluator = Evaluator(name=DATA)
 neg_sampler = dataset.negative_sampler
@@ -357,3 +415,11 @@ for run_idx in range(NUM_RUNS):
 
 print(f"Overall Elapsed Time (s): {timeit.default_timer() - start_overall: .4f}")
 print("==============================================================")
+"""
+Dynamic Link Prediction with a TGN model with Early Stopping
+Reference: 
+    - https://github.com/pyg-team/pytorch_geometric/blob/master/examples/tgn.py
+
+command for an example run:
+    python examples/linkproppred/tgbl-coin/tgn.py --data "tgbl-coin" --num_run 1 --seed 1
+"""

@@ -23,7 +23,7 @@ class LinkPredictor(torch.nn.Module):
     def forward(self, z_src, z_dst):
         h = self.lin_src(z_src) + self.lin_dst(z_dst)
         h = h.relu()
-        return self.lin_final(h).sigmoid()
+        return self.lin_final(h) #.sigmoid()
 
 
 class NodePredictor(torch.nn.Module):
