@@ -84,52 +84,39 @@ def train():
         )
 
         n_id = torch.cat([src, pos_dst, neg_dst]).unique()
-        #print("pre_id", n_id)
         # n_id, edge_index, e_id = neighbor_loader(n_id)
         n_id, edge_index, e_id = find_neighbor(neighbor_loader, n_id, HOP_NUM)
         assoc[n_id] = torch.arange(n_id.size(0), device=device)
 
         id_num = n_id.size(0)
-        #print("id_n", id_num)
-        #print("assoc", assoc[n_id])
 
         # Get updated memory of all nodes involved in the computation.
         z, last_update = model['memory'](n_id)
 
-        # z = model['gnn'](
-        #     z,
-        #     last_update,
-        #     edge_index,
-        #     data.t[e_id].to(device),
-        #     data.msg[e_id].to(device),
-        # )
+        z = model['gnn'](
+            z,
+            last_update,
+            edge_index,
+            data.t[e_id].to(device),
+            data.msg[e_id].to(device),
+        )
         
         ### 230913 #####################################################
         
         src_re = assoc[src]
         pos_re = assoc[pos_dst]
         neg_re = assoc[neg_dst]
-        #print(id_num)
-        #print(edge_index)
-        #input()
-        #assert 0==1
+
         loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+
+        mask = ~ torch.isin(loop_edge, edge_index)
+        loop_edge = loop_edge[mask]
         loop_edge = torch.stack([loop_edge,loop_edge])
-        if edge_index.size(1)==0:
-            #print(0)
-            #print(edge_index)
-            #print(loop_edge)
-            # continue
+        if edge_index.size(1) == 0:
             adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
-            #input()
         else:
-            #print(1)
-            #print(edge_index)
-            #print(torch.cat((loop_edge,edge_index),dim=-1))
-            #import time
-            #time.sleep(2)
-            # adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index),dim=-1)).to_device(device)
-            adj = SparseTensor.from_edge_index(edge_index).to_device(device)
+            adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
+            # adj = SparseTensor.from_edge_index(edge_index).to_device(device)
 
         pos_out = model['link_pred'](z, adj, torch.stack([src_re,pos_re]), HOP_NUM)
         neg_out = model['link_pred'](z, adj, torch.stack([src_re,neg_re]), HOP_NUM)
@@ -196,31 +183,26 @@ def test(loader, neg_sampler, split_mode):
             id_num = n_id.size(0)
             # Get updated memory of all nodes involved in the computation.
             z, last_update = model['memory'](n_id)
-            # z = model['gnn'](
-            #     z,
-            #     last_update,
-            #     edge_index,
-            #     data.t[e_id].to(device),
-            #     data.msg[e_id].to(device),
-            # )
+            z = model['gnn'](
+                z,
+                last_update,
+                edge_index,
+                data.t[e_id].to(device),
+                data.msg[e_id].to(device),
+            )
 
             loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+            mask = ~ torch.isin(loop_edge, edge_index)
+            loop_edge = loop_edge[mask]
             loop_edge = torch.stack([loop_edge,loop_edge])
 
             if edge_index.size(1) == 0:
-                #print(loop_edge)
                 adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
-                #input()
             else:
-                # adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index), dim=-1)).to_device(device)
-                adj = SparseTensor.from_edge_index(edge_index).to_device(device)
+                adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
+                # adj = SparseTensor.from_edge_index(edge_index).to_device(device)
 
             y_pred = model['link_pred'](z, adj, torch.stack([assoc[src], assoc[dst]]), HOP_NUM)
-            #y_pred = model['link_pred'](z[assoc[src]], z[assoc[dst]])
-            
-            #print(y_pred)
-            #print(y_pred.size())
-            #assert 0==1
 
             # compute MRR
             input_dict = {
@@ -257,7 +239,6 @@ args, _ = get_args()
 print("INFO: Arguments:", args)
 
 DATA = "tgbl-wiki"
-#DATA = "tgbl-coin"
 LR = args.lr
 BATCH_SIZE = args.bs
 K_VALUE = args.k_value  
@@ -278,6 +259,7 @@ MODEL_NAME = 'TGN_NCN'
 
 # set the device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
 
 # data loading
 dataset = PyGLinkPropPredDataset(name=DATA, root="datasets")

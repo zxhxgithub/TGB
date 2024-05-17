@@ -53,11 +53,9 @@ class NCNPredictor(torch.nn.Module):
         xj = x[tar_ei[1]]
         # x = x + self.xlin(x)
         cn = adjoverlap(adj, adj, tar_ei, filled1, cnsampledeg=self.cndeg)
-        print(cn)
+        # print(cn)
         xcn = spmm_add(cn, x)
         # print(xcn)
-        import time
-        time.sleep(1)
 
         # xij = self.xijlini(xi) + self.xijlinj(xj)
         # xcn = self.xcnlin(xcn) * self.beta
