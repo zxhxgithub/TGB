@@ -27,7 +27,7 @@ from torch_geometric.nn import TransformerConv
 # internal imports
 from tgb.utils.utils import get_args, set_random_seed, save_results
 from tgb.linkproppred.evaluate import Evaluator
-from modules.decoder import LinkPredictor
+from modules.decoder import LinkPredictor, LinkPredictor_h
 from modules.emb_module import GraphAttentionEmbedding
 from modules.msg_func import IdentityMessage
 from modules.msg_agg import LastAggregator
@@ -61,6 +61,7 @@ def train():
     neighbor_loader.reset_state()  # Start with an empty graph.
 
     total_loss = 0
+    acc = 0.0
     for batch in train_loader:
         batch = batch.to(device)
         optimizer.zero_grad()
@@ -82,6 +83,8 @@ def train():
 
         # Get updated memory of all nodes involved in the computation.
         z, last_update = model['memory'](n_id)
+        # print("egdeidx", edge_index)
+        
         z = model['gnn'](
             z,
             last_update,
@@ -91,10 +94,18 @@ def train():
         )
         pos_out = model['link_pred'](z[assoc[src]], z[assoc[pos_dst]])
         neg_out = model['link_pred'](z[assoc[src]], z[assoc[neg_dst]])
+        # print(pos_out, neg_out)
+        # exit()
 
         loss = criterion(pos_out, torch.ones_like(pos_out))
+        pos_loss = loss.item()
         loss += criterion(neg_out, torch.zeros_like(neg_out))
-
+        neg_loss = loss.item() - pos_loss
+        pos_acc = (pos_out > 0).sum().item()
+        neg_acc = (neg_out < 0).sum().item()
+        acc += pos_acc + neg_acc
+        # print(f"pos_loss: {pos_loss:.4f}, neg_loss: {neg_loss:.4f}, pos_acc: {pos_acc}, neg_acc: {neg_acc}")
+        # print(acc)
         # Update memory and neighbor loader with ground-truth state.
         model['memory'].update_state(src, pos_dst, t, msg)
         neighbor_loader.insert(src, pos_dst)
@@ -103,6 +114,8 @@ def train():
         optimizer.step()
         model['memory'].detach()
         total_loss += float(loss) * batch.num_events
+
+    print(f"Accuracy: {acc / train_data.num_events:.4f}")
 
     return total_loss / train_data.num_events
 
@@ -134,8 +147,11 @@ def test(loader, neg_sampler, split_mode):
             pos_batch.msg,
         )
 
-        neg_batch_list = neg_sampler.query_batch(pos_src, pos_dst, pos_t, split_mode=split_mode)
+        # print(pos_src, pos_src.shape)
+        # exit()
 
+        neg_batch_list = neg_sampler.query_batch(pos_src, pos_dst, pos_t, split_mode=split_mode)
+        
         for idx, neg_batch in enumerate(neg_batch_list):
             src = torch.full((1 + len(neg_batch),), pos_src[idx], device=device)
             dst = torch.tensor(
@@ -161,13 +177,20 @@ def test(loader, neg_sampler, split_mode):
             )
 
             y_pred = model['link_pred'](z[assoc[src]], z[assoc[dst]])
-
+            acc = (y_pred[0,:] > 0).sum() + (y_pred[1:,:] < 0).sum()
+            # print(acc / (len(neg_batch) + 1))
+            # print(y_pred.shape)
             # compute MRR
             input_dict = {
                 "y_pred_pos": np.array([y_pred[0, :].squeeze(dim=-1).cpu()]),
                 "y_pred_neg": np.array(y_pred[1:, :].squeeze(dim=-1).cpu()),
                 "eval_metric": [metric],
             }
+
+            # print(y_pred.shape, len(neg_batch))
+            # print(input_dict['y_pred_pos'].shape, input_dict['y_pred_neg'].shape)
+            # exit()
+
             perf_list.append(evaluator.eval(input_dict)[metric])
 
         # Update memory and neighbor loader with ground-truth state.
@@ -251,7 +274,7 @@ gnn = GraphAttentionEmbedding(
     time_enc=memory.time_enc,
 ).to(device)
 
-link_pred = LinkPredictor(in_channels=EMB_DIM).to(device)
+link_pred = LinkPredictor_h(in_channels=EMB_DIM).to(device)
 #link_pred = torch.compile(link_pred)
 model = {'memory': memory,
          'gnn': gnn,
@@ -312,15 +335,16 @@ for run_idx in range(NUM_RUNS):
         )
 
         # validation
-        start_val = timeit.default_timer()
-        perf_metric_val = test(val_loader, neg_sampler, split_mode="val")
-        print(f"\tValidation {metric}: {perf_metric_val: .4f}")
-        print(f"\tValidation: Elapsed time (s): {timeit.default_timer() - start_val: .4f}")
-        val_perf_list.append(perf_metric_val)
+        if epoch % 5 == 0:
+            start_val = timeit.default_timer()
+            perf_metric_val = test(val_loader, neg_sampler, split_mode="val")
+            print(f"\tValidation {metric}: {perf_metric_val: .4f}")
+            print(f"\tValidation: Elapsed time (s): {timeit.default_timer() - start_val: .4f}")
+            val_perf_list.append(perf_metric_val)
 
-        # check for early stopping
-        if early_stopper.step_check(perf_metric_val, model):
-            break
+            # check for early stopping
+            if early_stopper.step_check(perf_metric_val, model):
+                break
 
     train_val_time = timeit.default_timer() - start_train_val
     print(f"Train & Validation: Elapsed Time (s): {train_val_time: .4f}")

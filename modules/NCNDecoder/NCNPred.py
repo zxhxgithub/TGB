@@ -30,65 +30,17 @@ class NCNPredictor(torch.nn.Module):
         self.dropadj = DropAdj(edrop)
         lnfn = lambda dim, ln: nn.LayerNorm(dim) if ln else nn.Identity()
 
-        
         self.xlin = nn.Linear(hidden_channels, hidden_channels)
         self.xcnlin = nn.Linear(in_channels, hidden_channels)
         self.xijlini = nn.Linear(in_channels, hidden_channels)
         self.xijlinj = nn.Linear(in_channels, hidden_channels)
         self.xijfinal = nn.Linear(in_channels, hidden_channels)
         self.lin = nn.Linear(hidden_channels, hidden_channels)
-        self.xslin = nn.Linear(hidden_channels, out_channels)
         
-        '''
-        self.xlin = nn.Sequential(nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU(), nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU())
-        self.xcnlin = nn.Sequential(nn.Linear(in_channels, hidden_channels),
-                nn.ReLU(), nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU())
-        self.xijlini = nn.Sequential(nn.Linear(in_channels, hidden_channels),
-                nn.ReLU(), nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU())
-        self.xijlinj = nn.Sequential(nn.Linear(in_channels, hidden_channels),
-                nn.ReLU(), nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU())
-        self.xijfinal = nn.Sequential(nn.Linear(in_channels, hidden_channels),
-                nn.ReLU(), nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU())
-        self.lin = nn.Sequential(nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU(), nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU())
-        self.xslin = nn.Sequential(nn.Linear(hidden_channels, hidden_channels),
-                nn.ReLU(), nn.Linear(hidden_channels, out_channels),
-                nn.ReLU())
-                '''
-        '''
-        self.xlin = nn.Sequential(nn.Linear(hidden_channels, hidden_channels),
-            nn.Dropout(dropout, inplace=True), nn.ReLU(inplace=True),
-            nn.Linear(hidden_channels, hidden_channels),
-            lnfn(hidden_channels, ln), nn.Dropout(dropout, inplace=True), nn.ReLU(inplace=True)) if use_xlin else lambda x: 0
+        self.xslin = nn.Linear(2*in_channels, out_channels)
 
-        self.xcnlin = nn.Sequential(
-            nn.Linear(in_channels, hidden_channels),
-            nn.Dropout(dropout, inplace=True), nn.ReLU(inplace=True),
-            nn.Linear(hidden_channels, hidden_channels),
-            lnfn(hidden_channels, ln), nn.Dropout(dropout, inplace=True),
-            nn.ReLU(inplace=True), nn.Linear(hidden_channels, hidden_channels) if not tailact else nn.Identity())
-        self.xijlin = nn.Sequential(
-            nn.Linear(in_channels, hidden_channels), lnfn(hidden_channels, ln),
-            nn.Dropout(dropout, inplace=True), nn.ReLU(inplace=True),
-            nn.Linear(hidden_channels, hidden_channels) if not tailact else nn.Identity())
-        self.lin = nn.Sequential(nn.Linear(hidden_channels, hidden_channels),
-                                 lnfn(hidden_channels, ln),
-                                 nn.Dropout(dropout, inplace=True),
-                                 nn.ReLU(inplace=True),
-                                 nn.Linear(hidden_channels, hidden_channels) if twolayerlin else nn.Identity(),
-                                 lnfn(hidden_channels, ln) if twolayerlin else nn.Identity(),
-                                 nn.Dropout(dropout, inplace=True) if twolayerlin else nn.Identity(),
-                                 nn.ReLU(inplace=True) if twolayerlin else nn.Identity(),
-                                 nn.Linear(hidden_channels, out_channels))
-        '''
         self.cndeg = cndeg
+
     def multidomainforward(self,
                            x,
                            adj,
@@ -99,24 +51,20 @@ class NCNPredictor(torch.nn.Module):
         
         xi = x[tar_ei[0]]
         xj = x[tar_ei[1]]
-        x = x + self.xlin(x)
+        # x = x + self.xlin(x)
         cn = adjoverlap(adj, adj, tar_ei, filled1, cnsampledeg=self.cndeg)
+        print(cn)
         xcn = spmm_add(cn, x)
+        # print(xcn)
+        import time
+        time.sleep(1)
 
-        #print("xcns", xcns)
-        #import time
-        #time.sleep(2)
-        xij = self.xijlini(xi) + self.xijlinj(xj)
-        xcn = self.xcnlin(xcn) * self.beta
-        xs = torch.cat([xij, xcn])
+        # xij = self.xijlini(xi) + self.xijlinj(xj)
+        # xcn = self.xcnlin(xcn) * self.beta
+        xij = torch.mul(xi, xj).reshape(-1, x.size(1))
+        xs = torch.cat([xij, xcn], dim=-1)
         xs.relu()
         xs = self.xslin(xs)
-        '''
-        if boolen:
-            res = xs
-        else:
-            res = -xs
-        '''
 
         return xs
 

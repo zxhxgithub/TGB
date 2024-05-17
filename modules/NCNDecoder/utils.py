@@ -289,6 +289,6 @@ if __name__ == "__main__":
     #print(spmoverlap_notoverlap_(adj1, adj2))
     #print(sparsesample2(adj3, 3))
     #print(sparsesample_reweight(adj3, 3))
-    tarei = Tensor([[],
-                    []])
+    # tarei = Tensor([[],
+    #                 []])
     #print(adjoverlap(adj1=adj2, adj2=adj2, tarei=tarei))

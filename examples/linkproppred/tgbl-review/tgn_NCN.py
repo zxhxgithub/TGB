@@ -9,6 +9,7 @@ command for an example run:
 
 import math
 import timeit
+from tqdm import tqdm
 
 import os
 import os.path as osp
@@ -67,7 +68,7 @@ def train():
 
     total_loss = 0
 
-    for batch in train_loader:
+    for batch in tqdm(train_loader):
         batch = batch.to(device)
         optimizer.zero_grad()
 
@@ -84,7 +85,8 @@ def train():
 
         n_id = torch.cat([src, pos_dst, neg_dst]).unique()
         #print("pre_id", n_id)
-        n_id, edge_index, e_id = neighbor_loader(n_id)
+        # n_id, edge_index, e_id = neighbor_loader(n_id)
+        n_id, edge_index, e_id = find_neighbor(neighbor_loader, n_id, HOP_NUM)
         assoc[n_id] = torch.arange(n_id.size(0), device=device)
 
         id_num = n_id.size(0)
@@ -127,8 +129,8 @@ def train():
             #time.sleep(2)
             adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index),dim=-1)).to_device(device)
 
-        pos_out = model['link_pred'](z, adj, torch.stack([src_re,pos_re]), 1)
-        neg_out = model['link_pred'](z, adj, torch.stack([src_re,neg_re]), 1)
+        pos_out = model['link_pred'](z, adj, torch.stack([src_re,pos_re]), HOP_NUM)
+        neg_out = model['link_pred'](z, adj, torch.stack([src_re,neg_re]), HOP_NUM)
         loss = criterion(pos_out, torch.ones_like(pos_out))
         loss += criterion(neg_out, torch.zeros_like(neg_out))
 
@@ -163,7 +165,7 @@ def test(loader, neg_sampler, split_mode):
 
     perf_list = []
 
-    for pos_batch in loader:
+    for pos_batch in tqdm(loader):
         pos_src, pos_dst, pos_t, pos_msg = (
             pos_batch.src,
             pos_batch.dst,
@@ -185,7 +187,8 @@ def test(loader, neg_sampler, split_mode):
             )
 
             n_id = torch.cat([src, dst]).unique()
-            n_id, edge_index, e_id = neighbor_loader(n_id)
+            # n_id, edge_index, e_id = neighbor_loader(n_id)
+            n_id, edge_index, e_id = find_neighbor(neighbor_loader, n_id, HOP_NUM)
             assoc[n_id] = torch.arange(n_id.size(0), device=device)
             
             id_num = n_id.size(0)
@@ -198,16 +201,18 @@ def test(loader, neg_sampler, split_mode):
                 data.t[e_id].to(device),
                 data.msg[e_id].to(device),
             )
-           
-            if edge_index.size(0):
-                loop_edge = torch.arange(id_num, dtype=torch.int64)
+
+            loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+            loop_edge = torch.stack([loop_edge,loop_edge])
+
+            if edge_index.size(1) == 0:
                 #print(loop_edge)
-                adj = SparseTensor.from_edge_index(torch.stack([loop_edge,loop_edge])).to_device(device)
+                adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
                 #input()
             else:
-                adj = SparseTensor.from_edge_index(edge_index).to_device(device)
+                adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index), dim=-1)).to_device(device)
 
-            y_pred = model['link_pred'](z, adj, torch.stack([assoc[src], assoc[dst]]), 1)
+            y_pred = model['link_pred'](z, adj, torch.stack([assoc[src], assoc[dst]]), HOP_NUM)
             #y_pred = model['link_pred'](z[assoc[src]], z[assoc[dst]])
             
             #print(y_pred)
@@ -229,6 +234,12 @@ def test(loader, neg_sampler, split_mode):
     perf_metrics = float(torch.tensor(perf_list).mean())
 
     return perf_metrics
+
+def find_neighbor(neighbor_loader:LastNeighborLoader, n_id, k=1):
+    for i in range(k-1):
+        n_id, _, _ = neighbor_loader(n_id)
+    neighbor_info = neighbor_loader(n_id)
+    return neighbor_info
 
 # ==========
 # ==========
@@ -254,7 +265,8 @@ EMB_DIM = args.emb_dim
 TOLERANCE = args.tolerance
 PATIENCE = args.patience
 NUM_RUNS = args.num_run
-NUM_NEIGHBORS = 10
+NUM_NEIGHBORS = args.num_neighbors
+HOP_NUM = args.hop_num
 
 
 MODEL_NAME = 'TGN_NCN'

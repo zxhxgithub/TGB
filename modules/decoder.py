@@ -24,6 +24,21 @@ class LinkPredictor(torch.nn.Module):
         h = self.lin_src(z_src) + self.lin_dst(z_dst)
         h = h.relu()
         return self.lin_final(h) #.sigmoid()
+    
+class LinkPredictor_h(torch.nn.Module):
+    """
+    Reference:
+    - https://github.com/pyg-team/pytorch_geometric/blob/master/examples/tgn.py
+    """
+
+    def __init__(self, in_channels):
+        super().__init__()
+        self.in_channels = in_channels
+        self.lin_final = Linear(in_channels, 1)
+
+    def forward(self, z_src, z_dst):
+        h = torch.mul(z_src, z_dst).reshape(-1, self.in_channels)
+        return self.lin_final(h) #.sigmoid()
 
 
 class NodePredictor(torch.nn.Module):

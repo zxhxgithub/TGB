@@ -71,8 +71,8 @@ class LinkPropPredDataset(object):
         self.meta_dict = meta_dict
         if "fname" not in self.meta_dict:
             self.meta_dict["fname"] = self.root + "/" + self.name + "_edgelist.csv"
+            # print(self.meta_dict["fname"])
             self.meta_dict["nodefile"] = None
-
         if name == "tgbl-flight":
             self.meta_dict["nodefile"] = self.root + "/" + "airport_node_feat.csv"
         

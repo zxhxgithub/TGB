@@ -4,8 +4,8 @@ import os
 r"""
 General space to store global information used elsewhere such as url links, evaluation metrics etc.
 """
-PROJ_DIR = osp.dirname(osp.abspath(os.path.join(__file__, os.pardir))) + "/"
-
+# PROJ_DIR = osp.dirname(osp.abspath(os.path.join(__file__, os.pardir))) + "/"
+PROJ_DIR = "/mnt/data2/zhangxiaohui/SubGNCN/tgb/"
 
 class BColors:
     """

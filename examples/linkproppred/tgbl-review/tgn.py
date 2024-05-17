@@ -9,6 +9,7 @@ command for an example run:
 
 import math
 import timeit
+from tqdm import tqdm
 
 import os
 import os.path as osp
@@ -27,7 +28,7 @@ from torch_geometric.nn import TransformerConv
 # internal imports
 from tgb.utils.utils import get_args, set_random_seed, save_results
 from tgb.linkproppred.evaluate import Evaluator
-from modules.decoder import LinkPredictor
+from modules.decoder import LinkPredictor, LinkPredictor_h
 from modules.emb_module import GraphAttentionEmbedding
 from modules.msg_func import IdentityMessage
 from modules.msg_agg import LastAggregator
@@ -61,7 +62,7 @@ def train():
     neighbor_loader.reset_state()  # Start with an empty graph.
 
     total_loss = 0
-    for batch in train_loader:
+    for batch in tqdm(train_loader):
         batch = batch.to(device)
         optimizer.zero_grad()
 
@@ -127,7 +128,7 @@ def test(loader, neg_sampler, split_mode):
 
     perf_list = []
 
-    for pos_batch in loader:
+    for pos_batch in tqdm(loader):
         pos_src, pos_dst, pos_t, pos_msg = (
             pos_batch.src,
             pos_batch.dst,
@@ -252,7 +253,7 @@ gnn = GraphAttentionEmbedding(
     time_enc=memory.time_enc,
 ).to(device)
 
-link_pred = LinkPredictor(in_channels=EMB_DIM).to(device)
+link_pred = LinkPredictor_h(in_channels=EMB_DIM).to(device)
 
 model = {'memory': memory,
          'gnn': gnn,

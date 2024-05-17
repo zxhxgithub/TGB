@@ -55,6 +55,8 @@ def get_args():
     parser.add_argument('--tolerance', type=float, help='Early stopper tolerance', default=1e-6)
     parser.add_argument('--patience', type=float, help='Early stopper patience', default=5)
     parser.add_argument('--num_run', type=int, help='Number of iteration runs', default=1)
+    parser.add_argument('--num_neighbors', type=int, help='Number of stored recent neighbors', default=10)
+    parser.add_argument('--hop_num', type=int, help='Number of k-hop neighbors', default=1)
 
     try:
         args = parser.parse_args()

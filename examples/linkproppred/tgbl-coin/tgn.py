@@ -134,7 +134,7 @@ def test(loader, neg_sampler, split_mode):
             pos_batch.t,
             pos_batch.msg,
         )
-
+        
         neg_batch_list = neg_sampler.query_batch(pos_src, pos_dst, pos_t, split_mode=split_mode)
 
         for idx, neg_batch in enumerate(neg_batch_list):
