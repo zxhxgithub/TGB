@@ -277,18 +277,26 @@ class DropAdj(nn.Module):
                 adj.fill_value_(1/(1-self.dp), dtype=torch.float)
         return adj
 
+def sparse_diff(spm_x, spm_y):
+    """
+    Given 2 sparse tensor spm_x and spm_y, do the diff x - y.
+    x: bs * nidx, y: bs * nidy
+    require nidx >= nidy
+    """
+    return spmoverlap_notoverlap_(spm_x, spm_y)[1]
+
 if __name__ == "__main__":
     adj1 = SparseTensor.from_edge_index(
-        torch.LongTensor([[0, 0, 1, 2, 3], [0, 1, 1, 2, 3]]))
+        torch.LongTensor([[0, 0, 1, 2, 3,3,4], [0, 1, 1, 2, 3,4,4]]))
     adj2 = SparseTensor.from_edge_index(
-        torch.LongTensor([[0, 3, 1, 2,2, 3], [0, 1, 1, 2,3, 3]]))
+        torch.LongTensor([[0, 3, 1, 2,2,2, 3], [0, 1, 1, 2,2,3, 3]]))
     adj3 = SparseTensor.from_edge_index(
         torch.LongTensor([[0, 1,  2, 2, 2,2, 3, 3, 3], [1, 0,  2,3,4, 5, 4, 5, 6]]))
-    #print(spmnotoverlap_(adj1, adj2))
-    #print(spmoverlap_(adj1, adj2))
-    #print(spmoverlap_notoverlap_(adj1, adj2))
-    #print(sparsesample2(adj3, 3))
-    #print(sparsesample_reweight(adj3, 3))
-    # tarei = Tensor([[],
-    #                 []])
-    #print(adjoverlap(adj1=adj2, adj2=adj2, tarei=tarei))
+    # print(spmnotoverlap_(adj1, adj2))
+    # print(spmoverlap_(adj1, adj2))
+    print(spmoverlap_notoverlap_(adj1, adj2))
+    # print(sparsesample2(adj3, 3))
+    # print(sparsesample_reweight(adj3, 3))
+    tarei = torch.LongTensor([[2,2],
+                              [3,3]])
+    print(adjoverlap(adj1=adj2, adj2=adj2, tarei=tarei))

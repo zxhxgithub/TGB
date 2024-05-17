@@ -107,19 +107,41 @@ def train():
         pos_re = assoc[pos_dst]
         neg_re = assoc[neg_dst]
 
-        loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+        def generate_adj_1_hop():
+            loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+            mask = ~ torch.isin(loop_edge, edge_index)
+            loop_edge = loop_edge[mask]
+            loop_edge = torch.stack([loop_edge,loop_edge])
+            if edge_index.size(1) == 0:
+                adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
+            else:
+                adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
+                # adj = SparseTensor.from_edge_index(edge_index).to_device(device)
+            return adj
+        
+        def generate_adj_0_1_hop():
+            loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+            loop_edge = torch.stack([loop_edge,loop_edge])
+            if edge_index.size(1) == 0:
+                adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
+            else:
+                adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
+            return adj
+        
+        def generate_adj_0_1_2_hop(adj):
+            adj = SparseTensor.to_dense(adj)
+            adj = torch.mm(adj, adj)
+            adj = SparseTensor.from_dense(adj)
+            return adj
 
-        mask = ~ torch.isin(loop_edge, edge_index)
-        loop_edge = loop_edge[mask]
-        loop_edge = torch.stack([loop_edge,loop_edge])
-        if edge_index.size(1) == 0:
-            adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
-        else:
-            adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
-            # adj = SparseTensor.from_edge_index(edge_index).to_device(device)
+        adj_0_1 = generate_adj_0_1_hop()
+        adj_1 = generate_adj_1_hop()
+        adj_0_1_2 = generate_adj_0_1_2_hop(adj_1)
 
-        pos_out = model['link_pred'](z, adj, torch.stack([src_re,pos_re]), HOP_NUM)
-        neg_out = model['link_pred'](z, adj, torch.stack([src_re,neg_re]), HOP_NUM)
+        adjs = (adj_0_1, adj_1, adj_0_1_2)
+
+        pos_out = model['link_pred'](z, adjs, torch.stack([src_re,pos_re]))
+        neg_out = model['link_pred'](z, adjs, torch.stack([src_re,neg_re]))
         loss = criterion(pos_out, torch.ones_like(pos_out))
         loss += criterion(neg_out, torch.zeros_like(neg_out))
 
@@ -191,18 +213,39 @@ def test(loader, neg_sampler, split_mode):
                 data.msg[e_id].to(device),
             )
 
-            loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
-            mask = ~ torch.isin(loop_edge, edge_index)
-            loop_edge = loop_edge[mask]
-            loop_edge = torch.stack([loop_edge,loop_edge])
+            def generate_adj_1_hop():
+                loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+                mask = ~ torch.isin(loop_edge, edge_index)
+                loop_edge = loop_edge[mask]
+                loop_edge = torch.stack([loop_edge,loop_edge])
+                if edge_index.size(1) == 0:
+                    adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
+                else:
+                    adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
+                    # adj = SparseTensor.from_edge_index(edge_index).to_device(device)
+                return adj
+            
+            def generate_adj_0_1_hop():
+                loop_edge = torch.arange(id_num, dtype=torch.int64, device=device)
+                loop_edge = torch.stack([loop_edge,loop_edge])
+                if edge_index.size(1) == 0:
+                    adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
+                else:
+                    adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
+                return adj
+            
+            def generate_adj_0_1_2_hop(adj):
+                adj = SparseTensor.to_dense(adj)
+                adj = torch.mm(adj, adj)
+                adj = SparseTensor.from_dense(adj)
+                return adj
 
-            if edge_index.size(1) == 0:
-                adj = SparseTensor.from_edge_index(loop_edge).to_device(device)
-            else:
-                adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
-                # adj = SparseTensor.from_edge_index(edge_index).to_device(device)
+            adj_0_1 = generate_adj_0_1_hop()
+            adj_1 = generate_adj_1_hop()
+            adj_0_1_2 = generate_adj_0_1_2_hop(adj_1)
 
-            y_pred = model['link_pred'](z, adj, torch.stack([assoc[src], assoc[dst]]), HOP_NUM)
+            adjs = (adj_0_1, adj_1, adj_0_1_2)
+            y_pred = model['link_pred'](z, adjs, torch.stack([assoc[src], assoc[dst]]))
 
             # compute MRR
             input_dict = {
