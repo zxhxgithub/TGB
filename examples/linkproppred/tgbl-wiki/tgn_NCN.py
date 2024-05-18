@@ -129,9 +129,10 @@ def train():
             return adj
         
         def generate_adj_0_1_2_hop(adj):
-            adj = SparseTensor.to_dense(adj)
-            adj = torch.mm(adj, adj)
-            adj = SparseTensor.from_dense(adj)
+            # adj = SparseTensor.to_dense(adj)
+            # adj = torch.mm(adj, adj)
+            # adj = SparseTensor.from_dense(adj)
+            adj = adj.matmul(adj)
             return adj
 
         adj_0_1 = generate_adj_0_1_hop()
@@ -139,6 +140,7 @@ def train():
         adj_0_1_2 = generate_adj_0_1_2_hop(adj_1)
 
         adjs = (adj_0_1, adj_1, adj_0_1_2)
+        # adjs = (adj_0_1, adj_1)
 
         pos_out = model['link_pred'](z, adjs, torch.stack([src_re,pos_re]))
         neg_out = model['link_pred'](z, adjs, torch.stack([src_re,neg_re]))
@@ -234,10 +236,11 @@ def test(loader, neg_sampler, split_mode):
                     adj = SparseTensor.from_edge_index(torch.cat((loop_edge, edge_index, torch.stack([edge_index[1], edge_index[0]])),dim=-1)).to_device(device)
                 return adj
             
-            def generate_adj_0_1_2_hop(adj):
-                adj = SparseTensor.to_dense(adj)
-                adj = torch.mm(adj, adj)
-                adj = SparseTensor.from_dense(adj)
+            def generate_adj_0_1_2_hop(adj: SparseTensor):
+                # adj = SparseTensor.to_dense(adj)
+                # adj = torch.mm(adj, adj)
+                # adj = SparseTensor.from_dense(adj)
+                adj = adj.matmul(adj)
                 return adj
 
             adj_0_1 = generate_adj_0_1_hop()
@@ -245,6 +248,7 @@ def test(loader, neg_sampler, split_mode):
             adj_0_1_2 = generate_adj_0_1_2_hop(adj_1)
 
             adjs = (adj_0_1, adj_1, adj_0_1_2)
+            # adjs = (adj_0_1, adj_1)
             y_pred = model['link_pred'](z, adjs, torch.stack([assoc[src], assoc[dst]]))
 
             # compute MRR
