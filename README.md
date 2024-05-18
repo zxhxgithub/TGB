@@ -2,14 +2,14 @@
 ![TGB logo](imgs/logo.png)
 
 # Usage
-root dir: TGB
+root dir: TGB \
 cmd: 
 ```
 python examples/linkproppred/tgbl-coin/tgn_NCN.py --data dataset --hop_num hop_num --NCN_mode NCN_mode
 ```
-0&1 hop: hop_num=1, NCN_mode=0
-1 hop: hop_num=1, NCN_mode=1
-0~2 hop: hop_num=2, NCN_mode=2
+0&1 hop: hop_num=1, NCN_mode=0 \
+1 hop: hop_num=1, NCN_mode=1 \
+0~2 hop: hop_num=2, NCN_mode=2 \
 
 **Temporal Graph Benchmark for Machine Learning on Temporal Graphs** (NeurIPS 2023 Datasets and Benchmarks Track)
 <h4>
