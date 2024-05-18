@@ -384,12 +384,15 @@ criterion = torch.nn.BCEWithLogitsLoss()
 # Helper vector to map global node indices to local ones.
 assoc = torch.empty(data.num_nodes, dtype=torch.long, device=device)
 
-#logger.add("logger.log")
+logger.add(f"logs/{MODEL_NAME}_{DATA}_{HOP_NUM}_{NCN_MODE}.log", rotation="10 MB")
 
 print("==========================================================")
 print(f"=================*** {MODEL_NAME}: LinkPropPred: {DATA} ***=============")
 print("==========================================================")
-#logger.info("test")
+
+logger.info(f"=================*** {MODEL_NAME}: LinkPropPred: {DATA} ***=============")
+logger.info(f"Model: {MODEL_NAME}")
+logger.info(f"Data: {DATA}")
 
 evaluator = Evaluator(name=DATA)
 neg_sampler = dataset.negative_sampler
@@ -405,6 +408,7 @@ results_filename = f'{results_path}/{MODEL_NAME}_{DATA}_results.json'
 for run_idx in range(NUM_RUNS):
     print('-------------------------------------------------------------------------------')
     print(f"INFO: >>>>> Run: {run_idx} <<<<<")
+    logger.info(f"INFO: >>>>> Run: {run_idx} <<<<<")
     start_run = timeit.default_timer()
 
     # set the seed for deterministic results...
@@ -430,6 +434,7 @@ for run_idx in range(NUM_RUNS):
         print(
             f"Epoch: {epoch:02d}, Loss: {loss:.4f}, Training elapsed Time (s): {timeit.default_timer() - start_epoch_train: .4f}"
         )
+        logger.info(f"Epoch: {epoch:02d}, Loss: {loss:.4f}")
 
         # validation
         if epoch % PER_VAL_EPOCH == 0:
@@ -437,6 +442,8 @@ for run_idx in range(NUM_RUNS):
             perf_metric_val = test(val_loader, neg_sampler, split_mode="val")
             print(f"\tValidation {metric}: {perf_metric_val: .4f}")
             print(f"\tValidation: Elapsed time (s): {timeit.default_timer() - start_val: .4f}")
+            logger.info(f"\tValidation {metric}: {perf_metric_val: .4f}")
+            logger.info(f"\tValidation: Elapsed time (s): {timeit.default_timer() - start_val: .4f}")
             val_perf_list.append(perf_metric_val)
 
             # check for early stopping
@@ -445,6 +452,7 @@ for run_idx in range(NUM_RUNS):
 
     train_val_time = timeit.default_timer() - start_train_val
     print(f"Train & Validation: Elapsed Time (s): {train_val_time: .4f}")
+    logger.info(f"Train & Validation: Elapsed Time (s): {train_val_time: .4f}")
 
     # ==================================================== Test
     # first, load the best model
@@ -462,6 +470,10 @@ for run_idx in range(NUM_RUNS):
     test_time = timeit.default_timer() - start_test
     print(f"\tTest: Elapsed Time (s): {test_time: .4f}")
 
+    logger.info(f"Test: Evaluation Setting: >>> ONE-VS-MANY <<< ")
+    logger.info(f"\tTest: {metric}: {perf_metric_test: .4f}")
+    logger.info(f"\tTest: Elapsed Time (s): {test_time: .4f}")
+
     save_results({'model': MODEL_NAME,
                   'data': DATA,
                   'run': run_idx,
@@ -476,8 +488,14 @@ for run_idx in range(NUM_RUNS):
     print(f"INFO: >>>>> Run: {run_idx}, elapsed time: {timeit.default_timer() - start_run: .4f} <<<<<")
     print('-------------------------------------------------------------------------------')
 
+    logger.info(f"INFO: >>>>> Run: {run_idx}, elapsed time: {timeit.default_timer() - start_run: .4f} <<<<<")
+    logger.info('-------------------------------------------------------------------------------')
+
 print(f"Overall Elapsed Time (s): {timeit.default_timer() - start_overall: .4f}")
 print("==============================================================")
+
+logger.info(f"Overall Elapsed Time (s): {timeit.default_timer() - start_overall: .4f}")
+logger.info("==============================================================")
 """
 Dynamic Link Prediction with a TGN model with Early Stopping
 Reference: 

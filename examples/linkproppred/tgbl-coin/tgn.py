@@ -36,6 +36,8 @@ from modules.memory_module import TGNMemory
 from modules.early_stopping import  EarlyStopMonitor
 from tgb.linkproppred.dataset_pyg import PyGLinkPropPredDataset
 
+from loguru import logger
+
 
 # ==========
 # ========== Define helper function...
@@ -267,10 +269,13 @@ criterion = torch.nn.BCEWithLogitsLoss()
 # Helper vector to map global node indices to local ones.
 assoc = torch.empty(data.num_nodes, dtype=torch.long, device=device)
 
+logger.add(f'logs/{MODEL_NAME}_{DATA}.log', rotation="10 MB")
 
 print("==========================================================")
 print(f"=================*** {MODEL_NAME}: LinkPropPred: {DATA} ***=============")
 print("==========================================================")
+
+logger.info(f"=================*** {MODEL_NAME}: LinkPropPred: {DATA} ***=============")
 
 evaluator = Evaluator(name=DATA)
 neg_sampler = dataset.negative_sampler
@@ -286,6 +291,7 @@ results_filename = f'{results_path}/{MODEL_NAME}_{DATA}_results.json'
 for run_idx in range(NUM_RUNS):
     print('-------------------------------------------------------------------------------')
     print(f"INFO: >>>>> Run: {run_idx} <<<<<")
+    logger.info(f"INFO: >>>>> Run: {run_idx} <<<<<")
     start_run = timeit.default_timer()
 
     # set the seed for deterministic results...
@@ -311,12 +317,15 @@ for run_idx in range(NUM_RUNS):
         print(
             f"Epoch: {epoch:02d}, Loss: {loss:.4f}, Training elapsed Time (s): {timeit.default_timer() - start_epoch_train: .4f}"
         )
+        logger.info(f"Epoch: {epoch:02d}, Loss: {loss:.4f}")
 
         # validation
         start_val = timeit.default_timer()
         perf_metric_val = test(val_loader, neg_sampler, split_mode="val")
         print(f"\tValidation {metric}: {perf_metric_val: .4f}")
         print(f"\tValidation: Elapsed time (s): {timeit.default_timer() - start_val: .4f}")
+        logger.info(f"\tValidation {metric}: {perf_metric_val: .4f}")
+        logger.info(f"\tValidation: Elapsed time (s): {timeit.default_timer() - start_val: .4f}")
         val_perf_list.append(perf_metric_val)
 
         # check for early stopping
@@ -325,6 +334,7 @@ for run_idx in range(NUM_RUNS):
 
     train_val_time = timeit.default_timer() - start_train_val
     print(f"Train & Validation: Elapsed Time (s): {train_val_time: .4f}")
+    logger.info(f"Train & Validation: Elapsed Time (s): {train_val_time: .4f}")
 
     # ==================================================== Test
     # first, load the best model
@@ -341,6 +351,8 @@ for run_idx in range(NUM_RUNS):
     print(f"\tTest: {metric}: {perf_metric_test: .4f}")
     test_time = timeit.default_timer() - start_test
     print(f"\tTest: Elapsed Time (s): {test_time: .4f}")
+    logger.info(f"Test: {metric}: {perf_metric_test: .4f}")
+    logger.info(f"Test: Elapsed Time (s): {test_time: .4f}")
 
     save_results({'model': MODEL_NAME,
                   'data': DATA,
@@ -355,6 +367,10 @@ for run_idx in range(NUM_RUNS):
 
     print(f"INFO: >>>>> Run: {run_idx}, elapsed time: {timeit.default_timer() - start_run: .4f} <<<<<")
     print('-------------------------------------------------------------------------------')
+    logger.info(f"INFO: >>>>> Run: {run_idx}, elapsed time: {timeit.default_timer() - start_run: .4f} <<<<<")
+    logger.info('-------------------------------------------------------------------------------')
 
 print(f"Overall Elapsed Time (s): {timeit.default_timer() - start_overall: .4f}")
 print("==============================================================")
+
+logger.info(f"Overall Elapsed Time (s): {timeit.default_timer() - start_overall: .4f}")
