@@ -1,12 +1,3 @@
-"""
-Dynamic Link Prediction with a TGN model with Early Stopping
-Reference: 
-    - https://github.com/pyg-team/pytorch_geometric/blob/master/examples/tgn.py
-
-command for an example run:
-    python examples/linkproppred/tgbl-coin/tgn.py --data "tgbl-coin" --num_run 1 --seed 1
-"""
-
 import math
 import timeit
 from tqdm import tqdm
@@ -49,7 +40,7 @@ from modules.NCNDecoder.NCNPred import NCNPredictor
 
 def train():
     r"""
-    Training procedure for TGN model
+    Training procedure for TNCN model
     This function uses some objects that are globally defined in the current scrips 
 
     Parameters:
@@ -101,7 +92,7 @@ def train():
             data.msg[e_id].to(device),
         )
         
-        ### 230913 #####################################################
+        ################################################################
         
         src_re = assoc[src]
         pos_re = assoc[pos_dst]
@@ -194,7 +185,7 @@ def test(loader, neg_sampler, split_mode):
             pos_batch.msg,
         )
         
-        ########230915###########
+        #########################
         neg_batch_list = neg_sampler.query_batch(pos_src, pos_dst, pos_t, split_mode=split_mode)
 
         for idx, neg_batch in enumerate(neg_batch_list):
@@ -302,7 +293,6 @@ start_overall = timeit.default_timer()
 args, _ = get_args()
 print("INFO: Arguments:", args)
 
-# DATA = "tgbl-coin"
 DATA = args.data
 LR = args.lr
 BATCH_SIZE = args.bs
@@ -321,7 +311,7 @@ NCN_MODE = args.NCN_mode
 PER_VAL_EPOCH = args.per_val_epoch
 
 
-MODEL_NAME = 'TGN_NCN'
+MODEL_NAME = 'TNCN'
 # ==========
 
 # set the device
@@ -478,11 +468,3 @@ for run_idx in range(NUM_RUNS):
 
 print(f"Overall Elapsed Time (s): {timeit.default_timer() - start_overall: .4f}")
 print("==============================================================")
-"""
-Dynamic Link Prediction with a TGN model with Early Stopping
-Reference: 
-    - https://github.com/pyg-team/pytorch_geometric/blob/master/examples/tgn.py
-
-command for an example run:
-    python examples/linkproppred/tgbl-coin/tgn.py --data "tgbl-coin" --num_run 1 --seed 1
-"""
