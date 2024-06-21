@@ -1,4 +1,3 @@
-### 230913 ###############################
 import torch
 from torch import nn
 from torch_sparse import SparseTensor
@@ -287,11 +286,11 @@ def sparse_diff(spm_x, spm_y):
 
 if __name__ == "__main__":
     adj1 = SparseTensor.from_edge_index(
-        torch.LongTensor([[0, 0, 1, 2, 3,3,4], [0, 1, 1, 2, 3,4,4]]))
+        torch.LongTensor([[0, 0, 1, 2, 3, 3, 4], [0, 1, 1, 2, 3, 4, 4]]))
     adj2 = SparseTensor.from_edge_index(
-        torch.LongTensor([[0, 3, 1, 2,2,2, 3], [0, 1, 1, 2,2,3, 3]]))
+        torch.LongTensor([[0, 3, 1, 2, 2, 2, 3], [0, 1, 1, 2, 2, 3, 3]]))
     adj3 = SparseTensor.from_edge_index(
-        torch.LongTensor([[0, 1,  2, 2, 2,2, 3, 3, 3], [1, 0,  2,3,4, 5, 4, 5, 6]]))
+        torch.LongTensor([[0, 1,  2, 2, 2, 2, 3, 3, 3], [1, 0,  2, 3, 4, 5, 4, 5, 6]]))
     # print(spmnotoverlap_(adj1, adj2))
     # print(spmoverlap_(adj1, adj2))
     print(spmoverlap_notoverlap_(adj1, adj2))

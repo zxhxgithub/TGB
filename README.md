@@ -1,18 +1,45 @@
-<!-- # TGB -->
+<!-- # TNCN -->
+# Efficient Neural Common Neighbor for Temporal Graph Link Prediction
+
+### Overview
+![TNCN Pipeline](imgs/TNCN-pipeline.svg)
+
+### Scripts
+
+* Example of utilizing 1-hop TNCN to perform the dynamic link prediction on *tgbl-wiki* dataset:
+```
+python examples/linkproppred/tgbl-dataset/TNCN.py --data tgbl-wiki --hop_num 1 --NCN_mode 1
+```
+
+* Arguments for multi-hop NCN choices:
+```
+0&1 hop: hop_num=1, NCN_mode=0
+
+1 hop: hop_num=1, NCN_mode=1 (default)
+
+0~2 hop: hop_num=2, NCN_mode=2 
+```
+
+### Acknowledgments
+
+### Citation
+
+If code from this repo is useful for your project, please consider citing our paper:
+```
+@misc{zhang2024efficient,
+      title={Efficient Neural Common Neighbor for Temporal Graph Link Prediction}, 
+      author={Xiaohui Zhang and Yanbo Wang and Xiyuan Wang and Muhan Zhang},
+      year={2024},
+      eprint={2406.07926},
+      archivePrefix={arXiv},
+      primaryClass={id='cs.LG' full_name='Machine Learning' is_active=True alt_name=None in_archive='cs' is_general=False description='Papers on all aspects of machine learning research (supervised, unsupervised, reinforcement learning, bandit problems, and so on) including also robustness, explanation, fairness, and methodology. cs.LG is also an appropriate primary category for applications of machine learning methods.'}
+}
+```
+
+<!-- # TGB 
 ![TGB logo](imgs/logo.png)
 
-# Usage
-Root dir: TGB \
-Command: 
-```
-python examples/linkproppred/tgbl-dataset/TNCN.py --data dataset
-```
-Some arguments:
-0&1 hop: hop_num=1, NCN_mode=0 \
-1 hop: hop_num=1, NCN_mode=1 (default) \
-0~2 hop: hop_num=2, NCN_mode=2 
-
-<!-- **Temporal Graph Benchmark for Machine Learning on Temporal Graphs** (NeurIPS 2023 Datasets and Benchmarks Track)
+**Temporal Graph Benchmark for Machine Learning on Temporal Graphs** (NeurIPS 2023 Datasets and Benchmarks Track)
 <h4>
 	<a href="https://arxiv.org/abs/2307.01026"><img src="https://img.shields.io/badge/arXiv-pdf-yellowgreen"></a>
 	<a href="https://pypi.org/project/py-tgb/"><img src="https://img.shields.io/pypi/v/py-tgb.svg?color=brightgreen"></a>
@@ -101,6 +128,8 @@ If code or data from this repo is useful for your project, please consider citin
   year={2023}
 }
 ```
+-->
+
 <!-- 
 
 ### Install dependency
@@ -191,4 +220,4 @@ torch-sparse==0.6.17
 torch-spline-conv==1.2.2
 pandas==1.5.3
 clint==0.5.1
-``` --> -->
+``` -->

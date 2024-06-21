@@ -13,11 +13,7 @@ from torch.nn import Linear
 
 from torch_sparse import SparseTensor
 
-from torch_geometric.datasets import JODIEDataset
 from torch_geometric.loader import TemporalDataLoader
-
-from torch_geometric.nn import TransformerConv
-from loguru import logger
 
 # internal imports
 from tgb.utils.utils import get_args, set_random_seed, save_results
@@ -359,7 +355,6 @@ gnn = GraphAttentionEmbedding(
 
 link_pred = NCNPredictor(in_channels=EMB_DIM, hidden_channels=EMB_DIM, 
                          out_channels=1, NCN_mode=NCN_MODE).to(device)
-# link_pred = LinkPredictor(in_channels=EMB_DIM).to(device)
 
 model = {'memory': memory,
          'gnn': gnn,
@@ -374,12 +369,9 @@ criterion = torch.nn.BCEWithLogitsLoss()
 # Helper vector to map global node indices to local ones.
 assoc = torch.empty(data.num_nodes, dtype=torch.long, device=device)
 
-#logger.add("logger.log")
-
 print("==========================================================")
 print(f"=================*** {MODEL_NAME}: LinkPropPred: {DATA} ***=============")
 print("==========================================================")
-#logger.info("test")
 
 evaluator = Evaluator(name=DATA)
 neg_sampler = dataset.negative_sampler
