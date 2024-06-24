@@ -22,7 +22,7 @@ python examples/linkproppred/tgbl-dataset/TNCN.py --data tgbl-wiki --hop_num 1 -
 
 ### Acknowledgments
 
-We appreciate the authors of [TGB](https://github.com/shenyangHuang/TGB) for making their project codes and datasets publicly available.
+We appreciate the authors of [TGB](https://github.com/shenyangHuang/TGB) for making their project codes and datasets publicly available. We are also grateful to [TGB_Baselines](https://github.com/fpour/TGB_Baselines) and [DyGLib](https://github.com/yule-BUAA/DyGLib) authors that we conduct experiments on the baselines adapted from their implementations.
 
 ### Citation
 
