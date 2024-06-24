@@ -22,6 +22,8 @@ python examples/linkproppred/tgbl-dataset/TNCN.py --data tgbl-wiki --hop_num 1 -
 
 ### Acknowledgments
 
+We appreciate the authors of [TGB](https://github.com/shenyangHuang/TGB) for making their project codes and datasets publicly available.
+
 ### Citation
 
 If code from this repo is useful for your project, please consider citing our paper:
